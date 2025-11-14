@@ -43,7 +43,8 @@ cmake --install .
 
 # Rename Makevars.in to prevent R from processing it
 # CMake has already generated the final Makevars file
-if [ -f "../Makevars.in" ]; then
+# Only do this if Makevars was successfully generated
+if [ -f "../Makevars" ] && [ -f "../Makevars.in" ]; then
   mv ../Makevars.in ../Makevars.in.bak
 fi
 
