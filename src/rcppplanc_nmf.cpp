@@ -6,11 +6,11 @@
 #endif
 #include <RcppArmadillo.h>
 #include "config.h"
-#include <progress.hpp>
+#include "progress.hpp"
 #include <functional>
 #include <variant>
-#include <data.hpp>
-#include <nmf_lib.hpp>
+#include "data.hpp"
+#include "nmf_lib.hpp"
 
 // [[Rcpp::plugins(openmp)]]
 // via the depends attribute we tell Rcpp to create hooks for

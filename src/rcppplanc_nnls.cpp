@@ -6,8 +6,8 @@
 #endif
 #include <RcppArmadillo.h>
 #include "config.h"
-#include <progress.hpp>
-#include <nnls_lib.hpp>
+#include "progress.hpp"
+#include "nnls_lib.hpp"
 
 
 //' Block Principal Pivoted Non-Negative Least Squares

@@ -1,0 +1,139 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 7c4c4d1..4c37d2e 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -144,9 +144,57 @@ if(BUILD_RCPP)
+ else()
+ FetchContent_MakeAvailable(HighFive)
+ endif()
++
++# Find ZLIB before HDF5 - required for static HDF5 linking on macOS and Windows
++find_package(ZLIB REQUIRED)
++
++# Find libaec (szip) - optional, but required for some HDF5 builds
++# libaec provides the sz and aec compression libraries
++find_package(libaec CONFIG QUIET)
++if(NOT libaec_FOUND)
++    # Try to find the sz/aec library manually if libaec config is not available
++    find_library(LIBAEC_LIBRARY NAMES aec sz
++        HINTS /opt/homebrew/lib /usr/local/lib
++        PATH_SUFFIXES lib
++    )
++    if(LIBAEC_LIBRARY)
++        # Create both libaec::aec and libaec::sz targets as HDF5 may reference either
++        add_library(libaec::aec UNKNOWN IMPORTED)
++        set_target_properties(libaec::aec PROPERTIES
++            IMPORTED_LOCATION "${LIBAEC_LIBRARY}"
++        )
++        add_library(libaec::sz UNKNOWN IMPORTED)
++        set_target_properties(libaec::sz PROPERTIES
++            IMPORTED_LOCATION "${LIBAEC_LIBRARY}"
++        )
++        set(libaec_FOUND TRUE)
++    endif()
++endif()
++
++# Also look for szip separately (on some systems it's separate from libaec)
++find_library(LIBSZ_LIBRARY NAMES sz szip
++    HINTS /opt/homebrew/lib /usr/local/lib
++    PATH_SUFFIXES lib
++)
++
++# Add Homebrew paths to CMAKE_PREFIX_PATH on macOS if not already present
++if(APPLE AND NOT CMAKE_PREFIX_PATH MATCHES "/opt/homebrew")
++    if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "arm64")
++        # Apple Silicon - Homebrew installs to /opt/homebrew
++        list(APPEND CMAKE_PREFIX_PATH "/opt/homebrew")
++    else()
++        # Intel Mac - Homebrew installs to /usr/local
++        list(APPEND CMAKE_PREFIX_PATH "/usr/local")
++    endif()
++endif()
++
+ find_package(HDF5 REQUIRED COMPONENTS C)
+ set(HDF5_TARGET 1)
+-set(CMAKE_REQUIRED_LIBRARIES ${HDF5_LIBRARIES})
++set(CMAKE_REQUIRED_LIBRARIES ${HDF5_LIBRARIES} ZLIB::ZLIB)
++if(libaec_FOUND)
++    # Add both targets as HDF5 may reference either or both
++    list(APPEND CMAKE_REQUIRED_LIBRARIES libaec::aec libaec::sz)
++endif()
+ set(HighFive_Includes "${HighFive_SOURCE_DIR}/include" "${HDF5_INCLUDE_DIRS}")
+ set(CMAKE_REQUIRED_INCLUDES "${HighFive_Includes}")
+ set(test_hdf5_link "
+@@ -418,7 +466,7 @@ message(STATUS "NMFLIB_COMMON =  ${PLANC_COMMON}")
+ add_subdirectory(nmf)
+ target_link_libraries(nmflib PUBLIC "$<$<BOOL:${USING_MKL}>:MKL::MKL>" "$<$<BOOL:${USING_OPENBLAS}>:${OpenBLAS_LIBRARIES}>" "$<$<BOOL:${USING_BLAS}>:BLAS::BLAS>" "$<$<BOOL:${USING_BLAS}>:LAPACK::LAPACK>"
+         "$<$<BOOL:${HWLOC_FRAMEWORKS}>:${HWLOC_FRAMEWORKS}>"
+-        "$<$<BOOL:${DLFCN_LINK}>:dlfcn-win32::dl>" "$<IF:$<BOOL:HDF5_TARGET>,HDF5::HDF5,${HDF5_LIBRARIES}>" ${R_LDFLAGS} ${RCPP_FLIBS})
++        "$<$<BOOL:${DLFCN_LINK}>:dlfcn-win32::dl>" "$<IF:$<BOOL:HDF5_TARGET>,HDF5::HDF5,${HDF5_LIBRARIES}>" ZLIB::ZLIB "$<$<BOOL:${libaec_FOUND}>:libaec::aec;libaec::sz>" ${R_LDFLAGS} ${RCPP_FLIBS})
+ 
+ if (BUILD_RCPP)
+     get_directory_property(CMAKE_DEFINES COMPILE_DEFINITIONS)
+@@ -444,7 +492,65 @@ if (BUILD_RCPP)
+             unset(BLAS_LIBRARIES)
+             unset(LAPACK_LIBRARIES)
+         endif()
+-        set(EXTRA_LD_ARGS ${BLAS_LIBRARIES_EXTRACT} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES} ${pkgcfg_lib_HWLOC_hwloc} ${HWLOC_LDFLAGS} "$<$<BOOL:${HWLOC_FRAMEWORKS}>:${HWLOC_FRAMEWORKS}>" ${HDF5_LIBRARIES} ${R_LDFLAGS} ${RCPP_FLIBS})
++        # Resolve HDF5 and dependency libraries to actual paths for R linker
++        set(HDF5_LIBS_FOR_R "")
++        foreach(_lib IN LISTS HDF5_LIBRARIES)
++            if(TARGET ${_lib})
++                # This is a CMake target - need to get the actual library path
++                get_target_property(_lib_type ${_lib} TYPE)
++                if(_lib_type STREQUAL "INTERFACE_LIBRARY")
++                    # Interface libraries don't have LOCATION
++                    get_target_property(_interface_libs ${_lib} INTERFACE_LINK_LIBRARIES)
++                    if(_interface_libs)
++                        list(APPEND HDF5_LIBS_FOR_R ${_interface_libs})
++                    endif()
++                else()
++                    get_target_property(_lib_location ${_lib} LOCATION)
++                    if(_lib_location)
++                        list(APPEND HDF5_LIBS_FOR_R ${_lib_location})
++                    endif()
++                endif()
++            else()
++                # This is already an actual library path
++                list(APPEND HDF5_LIBS_FOR_R ${_lib})
++            endif()
++        endforeach()
++
++        # Get ZLIB library path
++        get_target_property(ZLIB_LIB ZLIB::ZLIB IMPORTED_LOCATION)
++        if(NOT ZLIB_LIB)
++            get_target_property(ZLIB_LIB ZLIB::ZLIB LOCATION)
++        endif()
++
++        # Get libaec library path(s)
++        set(LIBAEC_LIBS "")
++        if(libaec_FOUND)
++            if(LIBAEC_LIBRARY)
++                # We found it manually with find_library
++                list(APPEND LIBAEC_LIBS ${LIBAEC_LIBRARY})
++            elseif(TARGET libaec::aec)
++                # We found it via find_package - extract the actual path
++                get_target_property(_aec_loc libaec::aec IMPORTED_LOCATION)
++                if(NOT _aec_loc)
++                    get_target_property(_aec_loc libaec::aec LOCATION)
++                endif()
++                if(_aec_loc)
++                    list(APPEND LIBAEC_LIBS ${_aec_loc})
++                endif()
++            endif()
++        endif()
++
++        # Add libsz if found separately
++        if(LIBSZ_LIBRARY)
++            list(APPEND LIBAEC_LIBS ${LIBSZ_LIBRARY})
++        endif()
++
++        # Build EXTRA_LD_ARGS with actual library paths
++        if(LIBAEC_LIBS)
++            set(EXTRA_LD_ARGS ${BLAS_LIBRARIES_EXTRACT} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES} ${pkgcfg_lib_HWLOC_hwloc} ${HWLOC_LDFLAGS} "$<$<BOOL:${HWLOC_FRAMEWORKS}>:${HWLOC_FRAMEWORKS}>" ${HDF5_LIBS_FOR_R} ${ZLIB_LIB} ${LIBAEC_LIBS} ${R_LDFLAGS} ${RCPP_FLIBS})
++        else()
++            set(EXTRA_LD_ARGS ${BLAS_LIBRARIES_EXTRACT} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES} ${pkgcfg_lib_HWLOC_hwloc} ${HWLOC_LDFLAGS} "$<$<BOOL:${HWLOC_FRAMEWORKS}>:${HWLOC_FRAMEWORKS}>" ${HDF5_LIBS_FOR_R} ${ZLIB_LIB} ${R_LDFLAGS} ${RCPP_FLIBS})
++        endif()
+     list(JOIN EXTRA_LD_ARGS " " EXTRA_LD_ARGS)
+     endif ()
+     install(TARGETS nmflib RUNTIME DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/../" ARCHIVE DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/../" LIBRARY DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/../")

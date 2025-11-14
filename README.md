@@ -38,6 +38,54 @@ sources = 'https://welch-lab.r-universe.dev',
 cran = 'https://cloud.r-project.org'))
 ```
 
+#### macOS (ARM64/Apple Silicon and Intel):
+
+**Prerequisites:**
+1. Install HDF5 and dependencies via Homebrew:
+```bash
+brew install hdf5 cmake libaec
+```
+
+**What these packages do:**
+- `hdf5` - HDF5 library for data storage (required)
+- `cmake` - Build system (required, version >=3.21)
+- `libaec` - Provides szip compression library required by HDF5 static linking (required)
+
+**Installation:**
+
+From CRAN (recommended):
+```r
+install.packages("RcppPlanc")
+```
+
+From GitHub (development version):
+```r
+devtools::install_github("welch-lab/RcppPlanc")
+```
+
+**What happens automatically:**
+
+The configure script will:
+- Auto-detect Homebrew installations at `/opt/homebrew` (Apple Silicon) or `/usr/local` (Intel Macs)
+- Detect and link HDF5, ZLIB, and libaec/szip dependencies
+- Resolve CMake library targets to actual library paths for the R linker
+- Generate the appropriate Makevars file for R package compilation
+
+**Troubleshooting:**
+
+If you encounter HDF5 header detection issues (especially with renv), you can explicitly set the HDF5 location:
+```r
+Sys.setenv(HDF5_ROOT = "/opt/homebrew/opt/hdf5")
+devtools::install_github("welch-lab/RcppPlanc")
+```
+
+If you see linking errors about missing symbols (`_SZ_BufftoBuffCompress`), ensure libaec is installed:
+```bash
+brew install libaec
+```
+
+**Note:** These fixes are available in version 2.0.13+ and the current GitHub HEAD.
+
 #### SOURCE:
 1. Install the requirements above.
 2. Ensure your libraries can be found by CMake.
