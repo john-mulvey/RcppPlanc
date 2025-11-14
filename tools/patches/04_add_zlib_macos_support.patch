@@ -1,8 +1,8 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 7c4c4d1..0473d9f 100644
+index 7c4c4d1..cf90a8f 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -144,9 +144,45 @@ if(BUILD_RCPP)
+@@ -144,9 +144,50 @@ if(BUILD_RCPP)
  else()
  FetchContent_MakeAvailable(HighFive)
  endif()
@@ -11,18 +11,23 @@ index 7c4c4d1..0473d9f 100644
 +find_package(ZLIB REQUIRED)
 +
 +# Find libaec (szip) - optional, but required for some HDF5 builds
-+# libaec provides the sz compression library
++# libaec provides the sz and aec compression libraries
 +find_package(libaec CONFIG QUIET)
 +if(NOT libaec_FOUND)
-+    # Try to find the sz library manually if libaec config is not available
-+    find_library(SZ_LIBRARY NAMES sz aec
++    # Try to find the sz/aec library manually if libaec config is not available
++    find_library(LIBAEC_LIBRARY NAMES aec sz
 +        HINTS /opt/homebrew/lib /usr/local/lib
 +        PATH_SUFFIXES lib
 +    )
-+    if(SZ_LIBRARY)
++    if(LIBAEC_LIBRARY)
++        # Create both libaec::aec and libaec::sz targets as HDF5 may reference either
++        add_library(libaec::aec UNKNOWN IMPORTED)
++        set_target_properties(libaec::aec PROPERTIES
++            IMPORTED_LOCATION "${LIBAEC_LIBRARY}"
++        )
 +        add_library(libaec::sz UNKNOWN IMPORTED)
 +        set_target_properties(libaec::sz PROPERTIES
-+            IMPORTED_LOCATION "${SZ_LIBRARY}"
++            IMPORTED_LOCATION "${LIBAEC_LIBRARY}"
 +        )
 +        set(libaec_FOUND TRUE)
 +    endif()
@@ -44,17 +49,17 @@ index 7c4c4d1..0473d9f 100644
 -set(CMAKE_REQUIRED_LIBRARIES ${HDF5_LIBRARIES})
 +set(CMAKE_REQUIRED_LIBRARIES ${HDF5_LIBRARIES} ZLIB::ZLIB)
 +if(libaec_FOUND)
-+    list(APPEND CMAKE_REQUIRED_LIBRARIES libaec::sz)
++    list(APPEND CMAKE_REQUIRED_LIBRARIES libaec::aec)
 +endif()
  set(HighFive_Includes "${HighFive_SOURCE_DIR}/include" "${HDF5_INCLUDE_DIRS}")
  set(CMAKE_REQUIRED_INCLUDES "${HighFive_Includes}")
  set(test_hdf5_link "
-@@ -418,7 +454,7 @@ message(STATUS "NMFLIB_COMMON =  ${PLANC_COMMON}")
+@@ -418,7 +459,7 @@ message(STATUS "NMFLIB_COMMON =  ${PLANC_COMMON}")
  add_subdirectory(nmf)
  target_link_libraries(nmflib PUBLIC "$<$<BOOL:${USING_MKL}>:MKL::MKL>" "$<$<BOOL:${USING_OPENBLAS}>:${OpenBLAS_LIBRARIES}>" "$<$<BOOL:${USING_BLAS}>:BLAS::BLAS>" "$<$<BOOL:${USING_BLAS}>:LAPACK::LAPACK>"
          "$<$<BOOL:${HWLOC_FRAMEWORKS}>:${HWLOC_FRAMEWORKS}>"
 -        "$<$<BOOL:${DLFCN_LINK}>:dlfcn-win32::dl>" "$<IF:$<BOOL:HDF5_TARGET>,HDF5::HDF5,${HDF5_LIBRARIES}>" ${R_LDFLAGS} ${RCPP_FLIBS})
-+        "$<$<BOOL:${DLFCN_LINK}>:dlfcn-win32::dl>" "$<IF:$<BOOL:HDF5_TARGET>,HDF5::HDF5,${HDF5_LIBRARIES}>" ZLIB::ZLIB "$<$<BOOL:${libaec_FOUND}>:libaec::sz>" ${R_LDFLAGS} ${RCPP_FLIBS})
++        "$<$<BOOL:${DLFCN_LINK}>:dlfcn-win32::dl>" "$<IF:$<BOOL:HDF5_TARGET>,HDF5::HDF5,${HDF5_LIBRARIES}>" ZLIB::ZLIB "$<$<BOOL:${libaec_FOUND}>:libaec::aec>" ${R_LDFLAGS} ${RCPP_FLIBS})
  
  if (BUILD_RCPP)
      get_directory_property(CMAKE_DEFINES COMPILE_DEFINITIONS)
