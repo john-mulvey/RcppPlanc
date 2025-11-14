@@ -43,7 +43,7 @@ cran = 'https://cloud.r-project.org'))
 ```bash
 brew install hdf5 cmake libaec
 ```
-**Note**: `libaec` provides the szip compression library required by HDF5.
+**Note**: `libaec` provides the szip compression library required by HDF5 static linking.
 
 2. Install from CRAN or GitHub:
 ```r
@@ -60,7 +60,10 @@ Sys.setenv(HDF5_ROOT = "/opt/homebrew/opt/hdf5")
 devtools::install_github("welch-lab/RcppPlanc")
 ```
 
-The configure script will automatically detect Homebrew installations at `/opt/homebrew` (Apple Silicon) or `/usr/local` (Intel Macs).
+The configure script will automatically:
+- Detect Homebrew installations at `/opt/homebrew` (Apple Silicon) or `/usr/local` (Intel Macs)
+- Add ZLIB and libaec dependencies for static HDF5 linking
+- Generate the appropriate Makevars file for R package compilation
 
 #### SOURCE:
 1. Install the requirements above.

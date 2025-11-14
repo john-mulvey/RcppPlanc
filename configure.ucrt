@@ -41,4 +41,10 @@ fi
 cmake --build .
 cmake --install .
 
+# Rename Makevars.in to prevent R from processing it
+# CMake has already generated the final Makevars file
+if [ -f "../Makevars.in" ]; then
+  mv ../Makevars.in ../Makevars.in.bak
+fi
+
 sed -i ' '  nmf/nmflib_export.h

@@ -89,6 +89,12 @@ fi
 ${MAKE}
 $CMAKE --install .
 
+# Rename Makevars.in to prevent R from processing it
+# CMake has already generated the final Makevars file
+if [ -f "../Makevars.in" ]; then
+  mv ../Makevars.in ../Makevars.in.bak
+fi
+
 # Only touch cmake test file if its directory exists
 if [ -d "CMakeFiles/hdf5" ] && [ -f "CMakeFiles/hdf5/cmake_hdf5_test.c" ]; then
   echo "" >>  CMakeFiles/hdf5/cmake_hdf5_test.c
