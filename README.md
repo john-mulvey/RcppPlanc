@@ -39,10 +39,12 @@ cran = 'https://cloud.r-project.org'))
 ```
 
 #### macOS (ARM64/Apple Silicon):
-1. Install HDF5 via Homebrew:
+1. Install HDF5 and dependencies via Homebrew:
 ```bash
-brew install hdf5 cmake
+brew install hdf5 cmake libaec
 ```
+**Note**: `libaec` provides the szip compression library required by HDF5.
+
 2. Install from CRAN or GitHub:
 ```r
 # From CRAN

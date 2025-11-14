@@ -1,14 +1,32 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 7c4c4d1..4b6b74c 100644
+index 7c4c4d1..0473d9f 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -144,9 +144,24 @@ if(BUILD_RCPP)
+@@ -144,9 +144,45 @@ if(BUILD_RCPP)
  else()
  FetchContent_MakeAvailable(HighFive)
  endif()
 +
 +# Find ZLIB before HDF5 - required for static HDF5 linking on macOS and Windows
 +find_package(ZLIB REQUIRED)
++
++# Find libaec (szip) - optional, but required for some HDF5 builds
++# libaec provides the sz compression library
++find_package(libaec CONFIG QUIET)
++if(NOT libaec_FOUND)
++    # Try to find the sz library manually if libaec config is not available
++    find_library(SZ_LIBRARY NAMES sz aec
++        HINTS /opt/homebrew/lib /usr/local/lib
++        PATH_SUFFIXES lib
++    )
++    if(SZ_LIBRARY)
++        add_library(libaec::sz UNKNOWN IMPORTED)
++        set_target_properties(libaec::sz PROPERTIES
++            IMPORTED_LOCATION "${SZ_LIBRARY}"
++        )
++        set(libaec_FOUND TRUE)
++    endif()
++endif()
 +
 +# Add Homebrew paths to CMAKE_PREFIX_PATH on macOS if not already present
 +if(APPLE AND NOT CMAKE_PREFIX_PATH MATCHES "/opt/homebrew")
@@ -25,15 +43,18 @@ index 7c4c4d1..4b6b74c 100644
  set(HDF5_TARGET 1)
 -set(CMAKE_REQUIRED_LIBRARIES ${HDF5_LIBRARIES})
 +set(CMAKE_REQUIRED_LIBRARIES ${HDF5_LIBRARIES} ZLIB::ZLIB)
++if(libaec_FOUND)
++    list(APPEND CMAKE_REQUIRED_LIBRARIES libaec::sz)
++endif()
  set(HighFive_Includes "${HighFive_SOURCE_DIR}/include" "${HDF5_INCLUDE_DIRS}")
  set(CMAKE_REQUIRED_INCLUDES "${HighFive_Includes}")
  set(test_hdf5_link "
-@@ -418,7 +433,7 @@ message(STATUS "NMFLIB_COMMON =  ${PLANC_COMMON}")
+@@ -418,7 +454,7 @@ message(STATUS "NMFLIB_COMMON =  ${PLANC_COMMON}")
  add_subdirectory(nmf)
  target_link_libraries(nmflib PUBLIC "$<$<BOOL:${USING_MKL}>:MKL::MKL>" "$<$<BOOL:${USING_OPENBLAS}>:${OpenBLAS_LIBRARIES}>" "$<$<BOOL:${USING_BLAS}>:BLAS::BLAS>" "$<$<BOOL:${USING_BLAS}>:LAPACK::LAPACK>"
          "$<$<BOOL:${HWLOC_FRAMEWORKS}>:${HWLOC_FRAMEWORKS}>"
 -        "$<$<BOOL:${DLFCN_LINK}>:dlfcn-win32::dl>" "$<IF:$<BOOL:HDF5_TARGET>,HDF5::HDF5,${HDF5_LIBRARIES}>" ${R_LDFLAGS} ${RCPP_FLIBS})
-+        "$<$<BOOL:${DLFCN_LINK}>:dlfcn-win32::dl>" "$<IF:$<BOOL:HDF5_TARGET>,HDF5::HDF5,${HDF5_LIBRARIES}>" ZLIB::ZLIB ${R_LDFLAGS} ${RCPP_FLIBS})
++        "$<$<BOOL:${DLFCN_LINK}>:dlfcn-win32::dl>" "$<IF:$<BOOL:HDF5_TARGET>,HDF5::HDF5,${HDF5_LIBRARIES}>" ZLIB::ZLIB "$<$<BOOL:${libaec_FOUND}>:libaec::sz>" ${R_LDFLAGS} ${RCPP_FLIBS})
  
  if (BUILD_RCPP)
      get_directory_property(CMAKE_DEFINES COMPILE_DEFINITIONS)
