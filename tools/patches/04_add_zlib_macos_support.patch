@@ -1,0 +1,39 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 7c4c4d1..4b6b74c 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -144,9 +144,24 @@ if(BUILD_RCPP)
+ else()
+ FetchContent_MakeAvailable(HighFive)
+ endif()
++
++# Find ZLIB before HDF5 - required for static HDF5 linking on macOS and Windows
++find_package(ZLIB REQUIRED)
++
++# Add Homebrew paths to CMAKE_PREFIX_PATH on macOS if not already present
++if(APPLE AND NOT CMAKE_PREFIX_PATH MATCHES "/opt/homebrew")
++    if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "arm64")
++        # Apple Silicon - Homebrew installs to /opt/homebrew
++        list(APPEND CMAKE_PREFIX_PATH "/opt/homebrew")
++    else()
++        # Intel Mac - Homebrew installs to /usr/local
++        list(APPEND CMAKE_PREFIX_PATH "/usr/local")
++    endif()
++endif()
++
+ find_package(HDF5 REQUIRED COMPONENTS C)
+ set(HDF5_TARGET 1)
+-set(CMAKE_REQUIRED_LIBRARIES ${HDF5_LIBRARIES})
++set(CMAKE_REQUIRED_LIBRARIES ${HDF5_LIBRARIES} ZLIB::ZLIB)
+ set(HighFive_Includes "${HighFive_SOURCE_DIR}/include" "${HDF5_INCLUDE_DIRS}")
+ set(CMAKE_REQUIRED_INCLUDES "${HighFive_Includes}")
+ set(test_hdf5_link "
+@@ -418,7 +433,7 @@ message(STATUS "NMFLIB_COMMON =  ${PLANC_COMMON}")
+ add_subdirectory(nmf)
+ target_link_libraries(nmflib PUBLIC "$<$<BOOL:${USING_MKL}>:MKL::MKL>" "$<$<BOOL:${USING_OPENBLAS}>:${OpenBLAS_LIBRARIES}>" "$<$<BOOL:${USING_BLAS}>:BLAS::BLAS>" "$<$<BOOL:${USING_BLAS}>:LAPACK::LAPACK>"
+         "$<$<BOOL:${HWLOC_FRAMEWORKS}>:${HWLOC_FRAMEWORKS}>"
+-        "$<$<BOOL:${DLFCN_LINK}>:dlfcn-win32::dl>" "$<IF:$<BOOL:HDF5_TARGET>,HDF5::HDF5,${HDF5_LIBRARIES}>" ${R_LDFLAGS} ${RCPP_FLIBS})
++        "$<$<BOOL:${DLFCN_LINK}>:dlfcn-win32::dl>" "$<IF:$<BOOL:HDF5_TARGET>,HDF5::HDF5,${HDF5_LIBRARIES}>" ZLIB::ZLIB ${R_LDFLAGS} ${RCPP_FLIBS})
+ 
+ if (BUILD_RCPP)
+     get_directory_property(CMAKE_DEFINES COMPILE_DEFINITIONS)

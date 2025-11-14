@@ -31,6 +31,16 @@ CXXFLAGS="$CPPFLAGS $CXXFLAGS $EXTRACXXFLAGS"
 #LDFLAGS="$R_LDFLAGS $R_SHLDFLAGS"
 
 cd src
+
+# Apply patch to planc CMakeLists.txt for ZLIB and macOS support
+if [ -f "planc/CMakeLists.txt" ] && [ -f "../tools/patches/04_add_zlib_macos_support.patch" ]; then
+  # Check if patch has already been applied
+  if ! grep -q "find_package(ZLIB REQUIRED)" planc/CMakeLists.txt; then
+    echo "Applying ZLIB and macOS support patch to planc/CMakeLists.txt..."
+    patch -p1 -d planc < ../tools/patches/04_add_zlib_macos_support.patch || echo "Warning: patch may already be applied"
+  fi
+fi
+
 mkdir -p build && cd build
 
 # Detect platform and set up Homebrew paths for macOS
