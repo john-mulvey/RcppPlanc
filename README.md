@@ -38,6 +38,28 @@ sources = 'https://welch-lab.r-universe.dev',
 cran = 'https://cloud.r-project.org'))
 ```
 
+#### macOS (ARM64/Apple Silicon):
+1. Install HDF5 via Homebrew:
+```bash
+brew install hdf5 cmake
+```
+2. Install from CRAN or GitHub:
+```r
+# From CRAN
+install.packages("RcppPlanc")
+
+# Or from GitHub
+devtools::install_github("welch-lab/RcppPlanc")
+```
+
+**Note for renv users**: If you encounter HDF5 header detection issues with renv, you can explicitly set the HDF5 location:
+```r
+Sys.setenv(HDF5_ROOT = "/opt/homebrew/opt/hdf5")
+devtools::install_github("welch-lab/RcppPlanc")
+```
+
+The configure script will automatically detect Homebrew installations at `/opt/homebrew` (Apple Silicon) or `/usr/local` (Intel Macs).
+
 #### SOURCE:
 1. Install the requirements above.
 2. Ensure your libraries can be found by CMake.

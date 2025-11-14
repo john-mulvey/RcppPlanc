@@ -32,6 +32,30 @@ CXXFLAGS="$CPPFLAGS $CXXFLAGS $EXTRACXXFLAGS"
 
 cd src
 mkdir -p build && cd build
+
+# Detect platform and set up Homebrew paths for macOS
+CMAKE_PREFIX_PATH=""
+if [ "$(uname -s)" = "Darwin" ]; then
+  ARCH="$(uname -m)"
+  if [ "$ARCH" = "arm64" ]; then
+    # Apple Silicon - Homebrew installs to /opt/homebrew
+    CMAKE_PREFIX_PATH="/opt/homebrew"
+  else
+    # Intel Mac - Homebrew installs to /usr/local
+    CMAKE_PREFIX_PATH="/usr/local"
+  fi
+
+  # If HDF5_ROOT is set, add it to CMAKE_PREFIX_PATH
+  if [ -n "$HDF5_ROOT" ]; then
+    CMAKE_PREFIX_PATH="${HDF5_ROOT};${CMAKE_PREFIX_PATH}"
+  fi
+fi
+
+# Build CMAKE_ARGS with prefix path if needed
+if [ -n "$CMAKE_PREFIX_PATH" ]; then
+  CMAKE_ARGS="${CMAKE_ARGS} -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}"
+fi
+
 $CMAKE -S ../planc \
   -DCMAKE_EXPORT_COMPILE_COMMANDS=TRUE \
   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -47,9 +71,15 @@ $CMAKE -S ../planc \
   -DCMAKE_OSX_DEPLOYMENT_TARGET="11" \
   ${CMAKE_ARGS}
 
-echo "" >>  _deps/highfive-src/include/highfive/bits/H5Friends.hpp
+# Only touch files if they exist (avoid errors with non-existent paths)
+if [ -f "_deps/highfive-src/include/highfive/bits/H5Friends.hpp" ]; then
+  echo "" >>  _deps/highfive-src/include/highfive/bits/H5Friends.hpp
+fi
 
 ${MAKE}
 $CMAKE --install .
 
-echo "" >>  CMakeFiles/hdf5/cmake_hdf5_test.c
+# Only touch cmake test file if its directory exists
+if [ -d "CMakeFiles/hdf5" ] && [ -f "CMakeFiles/hdf5/cmake_hdf5_test.c" ]; then
+  echo "" >>  CMakeFiles/hdf5/cmake_hdf5_test.c
+fi

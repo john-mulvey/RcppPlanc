@@ -33,7 +33,10 @@ cmake -S ../planc \
   -DBUILD_RCPP=ON \
   -DCMAKE_INSTALL_PREFIX=${R_PACKAGE_DIR}
 
-echo "" >>  _deps/highfive-src/include/highfive/bits/H5Friends.hpp
+# Only touch file if it exists (avoid errors with non-existent paths)
+if [ -f "_deps/highfive-src/include/highfive/bits/H5Friends.hpp" ]; then
+  echo "" >>  _deps/highfive-src/include/highfive/bits/H5Friends.hpp
+fi
 
 cmake --build .
 cmake --install .
