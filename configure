@@ -89,11 +89,29 @@ fi
 ${MAKE}
 $CMAKE --install .
 
+# Generate Makevars from Makevars.gen (created by CMake)
+# This ensures R will definitely find and use it
+if [ -f "../Makevars.gen" ]; then
+  cp ../Makevars.gen ../Makevars
+  echo "Generated Makevars for R package compilation"
+  # Verify content
+  if grep -q "PKG_CPPFLAGS.*-Iplanc/common" ../Makevars; then
+    echo "Makevars contains expected include paths"
+  else
+    echo "Warning: Makevars may be incomplete"
+    head -3 ../Makevars
+  fi
+elif [ -f "../Makevars" ]; then
+  echo "Makevars already exists"
+else
+  echo "Warning: No Makevars file found - using Makevars.in as fallback"
+fi
+
 # Rename Makevars.in to prevent R from processing it
-# CMake has already generated the final Makevars file
-# Only do this if Makevars was successfully generated
+# Only do this if Makevars was successfully created
 if [ -f "../Makevars" ] && [ -f "../Makevars.in" ]; then
   mv ../Makevars.in ../Makevars.in.bak
+  echo "Renamed Makevars.in to prevent conflicts"
 fi
 
 # Only touch cmake test file if its directory exists
