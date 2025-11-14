@@ -15,7 +15,9 @@ rm -f src/data.hpp
 rm -f src/nmf_lib.hpp
 rm -f src/nnls_lib.hpp
 rm -f src/nmflib_export.h
+rm -f src/plancopts.h
 rm -f src/*.hpp
+rm -f src/*.h
 
 # Restore Makevars.in if it was backed up
 if [ -f src/Makevars.in.bak ]; then
