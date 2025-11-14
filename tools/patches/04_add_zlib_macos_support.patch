@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 7c4c4d1..2210692 100644
+index 7c4c4d1..1505b4f 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -144,9 +144,51 @@ if(BUILD_RCPP)
@@ -64,7 +64,7 @@ index 7c4c4d1..2210692 100644
  
  if (BUILD_RCPP)
      get_directory_property(CMAKE_DEFINES COMPILE_DEFINITIONS)
-@@ -444,7 +486,42 @@ if (BUILD_RCPP)
+@@ -444,7 +486,60 @@ if (BUILD_RCPP)
              unset(BLAS_LIBRARIES)
              unset(LAPACK_LIBRARIES)
          endif()
@@ -99,9 +99,27 @@ index 7c4c4d1..2210692 100644
 +            get_target_property(ZLIB_LIB ZLIB::ZLIB LOCATION)
 +        endif()
 +
++        # Get libaec library path(s)
++        set(LIBAEC_LIBS "")
++        if(libaec_FOUND)
++            if(LIBAEC_LIBRARY)
++                # We found it manually with find_library
++                list(APPEND LIBAEC_LIBS ${LIBAEC_LIBRARY})
++            elseif(TARGET libaec::aec)
++                # We found it via find_package - extract the actual path
++                get_target_property(_aec_loc libaec::aec IMPORTED_LOCATION)
++                if(NOT _aec_loc)
++                    get_target_property(_aec_loc libaec::aec LOCATION)
++                endif()
++                if(_aec_loc)
++                    list(APPEND LIBAEC_LIBS ${_aec_loc})
++                endif()
++            endif()
++        endif()
++
 +        # Build EXTRA_LD_ARGS with actual library paths
-+        if(libaec_FOUND AND LIBAEC_LIBRARY)
-+            set(EXTRA_LD_ARGS ${BLAS_LIBRARIES_EXTRACT} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES} ${pkgcfg_lib_HWLOC_hwloc} ${HWLOC_LDFLAGS} "$<$<BOOL:${HWLOC_FRAMEWORKS}>:${HWLOC_FRAMEWORKS}>" ${HDF5_LIBS_FOR_R} ${ZLIB_LIB} ${LIBAEC_LIBRARY} ${R_LDFLAGS} ${RCPP_FLIBS})
++        if(LIBAEC_LIBS)
++            set(EXTRA_LD_ARGS ${BLAS_LIBRARIES_EXTRACT} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES} ${pkgcfg_lib_HWLOC_hwloc} ${HWLOC_LDFLAGS} "$<$<BOOL:${HWLOC_FRAMEWORKS}>:${HWLOC_FRAMEWORKS}>" ${HDF5_LIBS_FOR_R} ${ZLIB_LIB} ${LIBAEC_LIBS} ${R_LDFLAGS} ${RCPP_FLIBS})
 +        else()
 +            set(EXTRA_LD_ARGS ${BLAS_LIBRARIES_EXTRACT} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES} ${pkgcfg_lib_HWLOC_hwloc} ${HWLOC_LDFLAGS} "$<$<BOOL:${HWLOC_FRAMEWORKS}>:${HWLOC_FRAMEWORKS}>" ${HDF5_LIBS_FOR_R} ${ZLIB_LIB} ${R_LDFLAGS} ${RCPP_FLIBS})
 +        endif()
