@@ -1,8 +1,8 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 7c4c4d1..cf90a8f 100644
+index 7c4c4d1..63b6ab6 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -144,9 +144,50 @@ if(BUILD_RCPP)
+@@ -144,9 +144,51 @@ if(BUILD_RCPP)
  else()
  FetchContent_MakeAvailable(HighFive)
  endif()
@@ -55,7 +55,7 @@ index 7c4c4d1..cf90a8f 100644
  set(HighFive_Includes "${HighFive_SOURCE_DIR}/include" "${HDF5_INCLUDE_DIRS}")
  set(CMAKE_REQUIRED_INCLUDES "${HighFive_Includes}")
  set(test_hdf5_link "
-@@ -418,7 +464,7 @@ message(STATUS "NMFLIB_COMMON =  ${PLANC_COMMON}")
+@@ -418,7 +460,7 @@ message(STATUS "NMFLIB_COMMON =  ${PLANC_COMMON}")
  add_subdirectory(nmf)
  target_link_libraries(nmflib PUBLIC "$<$<BOOL:${USING_MKL}>:MKL::MKL>" "$<$<BOOL:${USING_OPENBLAS}>:${OpenBLAS_LIBRARIES}>" "$<$<BOOL:${USING_BLAS}>:BLAS::BLAS>" "$<$<BOOL:${USING_BLAS}>:LAPACK::LAPACK>"
          "$<$<BOOL:${HWLOC_FRAMEWORKS}>:${HWLOC_FRAMEWORKS}>"
