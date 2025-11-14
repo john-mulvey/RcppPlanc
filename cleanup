@@ -11,6 +11,11 @@ rm -f src/Makevars.gen
 rm -f src/*.so
 rm -f src/*.a
 rm -f src/config.h
+rm -f src/data.hpp
+rm -f src/nmf_lib.hpp
+rm -f src/nnls_lib.hpp
+rm -f src/nmflib_export.h
+rm -f src/*.hpp
 
 # Restore Makevars.in if it was backed up
 if [ -f src/Makevars.in.bak ]; then
