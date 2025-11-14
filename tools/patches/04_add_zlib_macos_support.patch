@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 7c4c4d1..63b6ab6 100644
+index 7c4c4d1..2210692 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -144,9 +144,51 @@ if(BUILD_RCPP)
@@ -64,3 +64,47 @@ index 7c4c4d1..63b6ab6 100644
  
  if (BUILD_RCPP)
      get_directory_property(CMAKE_DEFINES COMPILE_DEFINITIONS)
+@@ -444,7 +486,42 @@ if (BUILD_RCPP)
+             unset(BLAS_LIBRARIES)
+             unset(LAPACK_LIBRARIES)
+         endif()
+-        set(EXTRA_LD_ARGS ${BLAS_LIBRARIES_EXTRACT} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES} ${pkgcfg_lib_HWLOC_hwloc} ${HWLOC_LDFLAGS} "$<$<BOOL:${HWLOC_FRAMEWORKS}>:${HWLOC_FRAMEWORKS}>" ${HDF5_LIBRARIES} ${R_LDFLAGS} ${RCPP_FLIBS})
++        # Resolve HDF5 and dependency libraries to actual paths for R linker
++        set(HDF5_LIBS_FOR_R "")
++        foreach(_lib IN LISTS HDF5_LIBRARIES)
++            if(TARGET ${_lib})
++                # This is a CMake target - need to get the actual library path
++                get_target_property(_lib_type ${_lib} TYPE)
++                if(_lib_type STREQUAL "INTERFACE_LIBRARY")
++                    # Interface libraries don't have LOCATION
++                    get_target_property(_interface_libs ${_lib} INTERFACE_LINK_LIBRARIES)
++                    if(_interface_libs)
++                        list(APPEND HDF5_LIBS_FOR_R ${_interface_libs})
++                    endif()
++                else()
++                    get_target_property(_lib_location ${_lib} LOCATION)
++                    if(_lib_location)
++                        list(APPEND HDF5_LIBS_FOR_R ${_lib_location})
++                    endif()
++                endif()
++            else()
++                # This is already an actual library path
++                list(APPEND HDF5_LIBS_FOR_R ${_lib})
++            endif()
++        endforeach()
++
++        # Get ZLIB library path
++        get_target_property(ZLIB_LIB ZLIB::ZLIB IMPORTED_LOCATION)
++        if(NOT ZLIB_LIB)
++            get_target_property(ZLIB_LIB ZLIB::ZLIB LOCATION)
++        endif()
++
++        # Build EXTRA_LD_ARGS with actual library paths
++        if(libaec_FOUND AND LIBAEC_LIBRARY)
++            set(EXTRA_LD_ARGS ${BLAS_LIBRARIES_EXTRACT} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES} ${pkgcfg_lib_HWLOC_hwloc} ${HWLOC_LDFLAGS} "$<$<BOOL:${HWLOC_FRAMEWORKS}>:${HWLOC_FRAMEWORKS}>" ${HDF5_LIBS_FOR_R} ${ZLIB_LIB} ${LIBAEC_LIBRARY} ${R_LDFLAGS} ${RCPP_FLIBS})
++        else()
++            set(EXTRA_LD_ARGS ${BLAS_LIBRARIES_EXTRACT} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES} ${pkgcfg_lib_HWLOC_hwloc} ${HWLOC_LDFLAGS} "$<$<BOOL:${HWLOC_FRAMEWORKS}>:${HWLOC_FRAMEWORKS}>" ${HDF5_LIBS_FOR_R} ${ZLIB_LIB} ${R_LDFLAGS} ${RCPP_FLIBS})
++        endif()
+     list(JOIN EXTRA_LD_ARGS " " EXTRA_LD_ARGS)
+     endif ()
+     install(TARGETS nmflib RUNTIME DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/../" ARCHIVE DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/../" LIBRARY DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/../")
